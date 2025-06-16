@@ -41,7 +41,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const usuario = JSON.parse(localStorage.getItem("usuarios")) || [];
-  // const usuario = usuarios.find(u => u.nombre === nombreUsuario);
 
   if (!usuario) {
     alert("Usuario no encontrado.");
