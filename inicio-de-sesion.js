@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const inputUsuario = document.getElementById('usuario');
   const inputTipo = document.getElementById('tipo');
   const inputCedula = document.getElementById('cedula');
-  const inputContraseña = document.getElementById('contraseña');
+  const passwordInputLogin = document.getElementById('contraseña-login');
 
   // === Elementos Registro ===
   const ventanaRegis = document.getElementById('window-regis');
@@ -37,32 +37,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCerrarRegistro = document.getElementById('btn-cerrar-registro');
   const btnRegistrar = document.getElementById('registrarse');
 
-  // === Mostrar/Ocultar contraseña ===
-  const passwordInputLogin = document.getElementById('contraseña-login');
-  const toggleButtonLogin = document.getElementById('toggle-password-login');
   const passwordInputRegis = document.getElementById('contraseña-regis');
+  const toggleButtonLogin = document.getElementById('toggle-password-login');
   const toggleButtonRegis = document.getElementById('toggle-password-regis');
 
-  // === Secciones de la interfaz ===
   const seccionInicio = document.getElementById('inicio');
   const seccionDashboard = document.getElementById('dashboard');
 
-  // === Elementos Recuperar Contraseña ===
+  // === Recuperación de contraseña ===
   const linkRecuperar = document.getElementById("link-recuperar");
   const ventanaRecuperar = document.getElementById("window-recuperar");
-  const ventanaLogin1 = document.getElementById("window");
   const btnCerrarRecuperar = document.getElementById("btn-cerrar-recuperar");
-
-  linkRecuperar.addEventListener("click", (e) => {
-    e.preventDefault();
-    ventanaLogin1.style.display = "none";
-    ventanaRecuperar.classList.remove("oculto");
-  });
-
-  btnCerrarRecuperar.addEventListener("click", () => {
-    ventanaRecuperar.classList.add("oculto");
-  });
-
+  const formCambiarPass = document.getElementById("form-cambiar-pass");
+  const cedulaInput = document.getElementById("recuperar-cedula");
+  const correoInput = document.getElementById("recuperar-correo");
+  const nuevaClaveInput = document.getElementById("nueva-contraseña");
+  const btnEnviarRecuperacion = document.getElementById("btn-enviar-recuperacion");
+  const btnActualizarClave = document.getElementById("btn-cambiar-contraseña");
+  let cedulaVerificada = null;
 
   // =============================
   // Eventos Login
@@ -88,25 +80,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const tipo = inputTipo.value;
     const cedula = inputCedula.value.trim();
     const contraseña = passwordInputLogin.value;
-  
+
     if (!usuario || !tipo || !cedula || !contraseña) {
       mensajeLogin.style.color = "red";
       mensajeLogin.textContent = "Por favor complete todos los campos.";
       return;
     }
-    
+
     const usuarioRef = db.ref('usuarios/' + cedula);
     usuarioRef.once('value')
       .then((snapshot) => {
         const usuarioFirebase = snapshot.val();
-        console.log(usuarioFirebase);
-        
+
         if (!usuarioFirebase) {
           mensajeLogin.style.color = "red";
           mensajeLogin.textContent = "No se encontró un usuario con esa cédula.";
           return;
         }
-        
+
         if (
           usuarioFirebase.nombre === usuario &&
           usuarioFirebase.tipo === tipo &&
@@ -115,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
           mensajeLogin.style.color = "green";
           mensajeLogin.textContent = "Inicio de sesión exitoso.";
           sessionStorage.setItem("usuario", usuario);
-  
+
           const frases = [
             "Temporada de patos... ¿otra vez? ¡No! Es temporada de ganancias explosivas en ACME Bank.",
             "¡Dinero va! Como en los Looney Tunes, pero aquí sí puedes atraparlo.",
@@ -133,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             "Aquí no caes en trampas del Coyote: cada clic te hace avanzar.",
             "¡Es temporada de inversión! Y tus ganancias no conocen gravedad."
           ];
-  
+
           const pFrase = document.getElementById("frase-temporada");
           if (pFrase) {
             const aleatoria = frases[Math.floor(Math.random() * frases.length)];
@@ -144,18 +135,17 @@ document.addEventListener('DOMContentLoaded', () => {
             ventanaLogin.style.display = 'none';
             window.location.href = 'html.html';
           }, 1000);
-          
+
         } else {
           mensajeLogin.style.color = "red";
           mensajeLogin.textContent = "Credenciales incorrectas. Intente nuevamente.";
-
         }
       })
       .catch((error) => {
         mensajeLogin.style.color = "red";
         mensajeLogin.textContent = "Error de conexión a Firebase: " + error.message;
       });
-  });  
+  });
 
   // =============================
   // Eventos Registro
@@ -182,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
       correo: document.getElementById('correo-regis').value.trim(),
       direccion: document.getElementById('direccion-regis').value.trim(),
       ciudad: document.getElementById('ciudad-regis').value.trim(),
-      contraseña: document.getElementById('contraseña-regis').value,
+      contraseña: passwordInputRegis.value,
       saldo: 0,
       numero: numeroCuenta,
       fechaCreacion: fechaCreacion,
@@ -199,10 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
       alert("Por favor complete todos los campos requeridos.");
       return;
     }
-
-    const usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
-    usuarios.push(nuevoUsuario);
-    localStorage.setItem('usuarios', JSON.stringify(usuarios));
 
     db.ref('usuarios/' + nuevoUsuario.cedula).set(nuevoUsuario)
       .then(() => {
@@ -226,6 +212,77 @@ document.addEventListener('DOMContentLoaded', () => {
     const isPassword = passwordInputRegis.type === 'password';
     passwordInputRegis.type = isPassword ? 'text' : 'password';
     toggleButtonRegis.textContent = isPassword ? '🙈' : '👁️';
+  });
+
+  // === Recuperar contraseña ===
+  linkRecuperar.addEventListener("click", (e) => {
+    e.preventDefault();
+    ventanaLogin.classList.add("oculto");
+    ventanaRecuperar.classList.remove("oculto");
+  });
+
+  btnEnviarRecuperacion.addEventListener("click", () => {
+    const cedula = cedulaInput.value.trim();
+    const correo = correoInput.value.trim();
+
+    if (!cedula || !correo) {
+      alert("Por favor completa todos los campos.");
+      return;
+    }
+
+    db.ref("usuarios").once("value")
+      .then(snapshot => {
+        const usuarios = snapshot.val();
+        for (let key in usuarios) {
+          const usuario = usuarios[key];
+          if (usuario.cedula === cedula && usuario.correo === correo) {
+            cedulaVerificada = key;
+            alert("Identidad verificada. Por favor ingresa tu nueva contraseña.");
+            formCambiarPass.classList.remove("oculto");
+            return;
+          }
+        }
+        alert("Datos incorrectos o no registrados.");
+      })
+      .catch(error => {
+        console.error("Error al recuperar datos:", error);
+        alert("Ocurrió un error al buscar tus datos.");
+      });
+  });
+
+  btnActualizarClave.addEventListener("click", () => {
+    const nuevaClave = nuevaClaveInput.value.trim();
+
+    if (!cedulaVerificada || !nuevaClave) {
+      alert("Por favor completa el campo de nueva contraseña.");
+      return;
+    }
+
+    db.ref("usuarios/" + cedulaVerificada).update({
+      contraseña: nuevaClave
+    })
+      .then(() => {
+        alert("Contraseña actualizada correctamente.");
+        ventanaRecuperar.classList.add("oculto");
+        formCambiarPass.classList.add("oculto");
+        cedulaInput.value = "";
+        correoInput.value = "";
+        nuevaClaveInput.value = "";
+        cedulaVerificada = null;
+      })
+      .catch(error => {
+        console.error("Error al actualizar contraseña:", error);
+        alert("No se pudo actualizar la contraseña.");
+      });
+  });
+
+  btnCerrarRecuperar.addEventListener("click", () => {
+    ventanaRecuperar.classList.add("oculto");
+    formCambiarPass.classList.add("oculto");
+    cedulaInput.value = "";
+    correoInput.value = "";
+    nuevaClaveInput.value = "";
+    cedulaVerificada = null;
   });
 
   // === Cerrar sesión desde botón menú ===
@@ -252,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inputUsuario.value = '';
     inputTipo.selectedIndex = 0;
     inputCedula.value = '';
-    inputContraseña.value = '';
+    passwordInputLogin.value = '';
     mensajeLogin.textContent = '';
   }
 
@@ -265,6 +322,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('correo-regis').value = '';
     document.getElementById('direccion-regis').value = '';
     document.getElementById('ciudad-regis').value = '';
-    document.getElementById('contraseña-regis').value = '';
+    passwordInputRegis.value = '';
   }
 });
