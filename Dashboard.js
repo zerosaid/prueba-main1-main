@@ -39,15 +39,15 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "html1.html";
     return;
   }
-  
+
   const usuario = JSON.parse(localStorage.getItem("usuarios")) || [];
   // const usuario = usuarios.find(u => u.nombre === nombreUsuario);
-  
+
   if (!usuario) {
     alert("Usuario no encontrado.");
     return;
   }
-  
+
   datosUsuario = usuario;
 
   if (!datosUsuario.numeroCuenta) {
@@ -58,9 +58,9 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("usuarios", JSON.stringify(usuarios));
     db.ref('usuarios/' + datosUsuario.cedula + '/numeroCuenta').set(datosUsuario.numeroCuenta);
     db.ref('usuarios/' + datosUsuario.cedula + '/fechaCreacion').set(datosUsuario.fechaCreacion);
-    
+
   }
-  
+
   db.ref("usuarios/" + datosUsuario.cedula).once("value").then(snapshot => {
     if (snapshot.exists()) {
       usuarioActual = snapshot.val();
@@ -103,13 +103,9 @@ function mostrarOpcion(opcion) {
     case 'retiro':
       retirar();
       break;
-    case 'deposito':
-      depositar();
+    case 'extracto':
+      generarExtracto();
       break;
-      case 'reporte':
-        generarExtracto();
-        break;
-      
     case 'resumen':
       mostrarResumenTransacciones();
       break;
@@ -217,41 +213,6 @@ function realizarRetiro() {
   mostrarResumenTransacciones();
 }
 
-function depositar() {
-  document.getElementById("deposito").classList.remove("oculto");
-  document.getElementById("cuentaUsuarioDeposito").textContent = usuarioActual.numeroCuenta || "---";
-  document.getElementById("nombreUsuarioDeposito").textContent = usuarioActual.nombre || "---";
-}
-
-function realizarDeposito() {
-  const monto = parseFloat(document.getElementById("montoDepositar").value);
-  if (isNaN(monto) || monto <= 0) return alert("Ingrese un monto válido.");
-
-  usuarioActual.saldo += monto;
-
-  const tx = {
-    fecha: obtenerFechaHoy(),
-    referencia: generarReferencia(),
-    tipo: "Depósito",
-    descripcion: "Depósito en oficina",
-    valor: monto
-  };
-
-  usuarioActual.transacciones = usuarioActual.transacciones || [];
-  usuarioActual.transacciones.push(tx);
-
-  db.ref("usuarios/" + usuarioActual.cedula).update({
-    saldo: usuarioActual.saldo,
-    transacciones: usuarioActual.transacciones
-  });
-
-  document.getElementById("detalleDeposito").textContent = `Depositaste $${monto.toLocaleString()} el ${tx.fecha} (Ref: ${tx.referencia})`;
-  document.getElementById("resumenDeposito").classList.remove("oculto");
-
-  mostrarDatosUsuario();
-  mostrarResumenTransacciones();
-}
-
 // =============================
 // Pago de Servicios
 // =============================
@@ -293,7 +254,7 @@ function realizarPagoServicio() {
 }
 
 // =============================
-// Reporte y certificado
+// Extracto y certificado
 // =============================
 function generarExtracto() {
   if (!usuarioActual) return console.warn("Usuario no cargado.");
@@ -303,6 +264,53 @@ function generarExtracto() {
 
   // Vaciar resultados anteriores
   document.getElementById("tablaExtracto").innerHTML = "";
+}
+function filtrarTransaccionesPorFecha() {
+  const anio = document.getElementById("anio").value;
+  const mes = document.getElementById("mes").value;
+  const cedula = sessionStorage.getItem("cedula");
+
+  if (!anio || !mes) {
+    alert("Por favor, ingresa el año y el mes.");
+    return;
+  }
+
+  const ruta = `usuarios/${cedula}/transacciones`;
+  get(ref(database, ruta)).then(snapshot => {
+    const tbody = document.getElementById("tablaExtracto");
+    tbody.innerHTML = "";
+
+    if (!snapshot.exists()) {
+      tbody.innerHTML = "<tr><td colspan='5'>No hay transacciones.</td></tr>";
+      return;
+    }
+
+    const datos = Object.values(snapshot.val());
+    const filtrados = datos.filter(t => {
+      const fecha = new Date(t.fecha);
+      return (
+        fecha.getFullYear() === parseInt(anio) &&
+        fecha.getMonth() + 1 === parseInt(mes)
+      );
+    });
+
+    if (filtrados.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='5'>No se encontraron transacciones para ese mes.</td></tr>";
+    } else {
+      filtrados.forEach(t => {
+        const fila = `
+          <tr>
+            <td>${t.fecha}</td>
+            <td>${t.referencia}</td>
+            <td>${t.tipo}</td>
+            <td>${t.descripcion}</td>
+            <td>$${t.valor}</td>
+          </tr>
+        `;
+        tbody.innerHTML += fila;
+      });
+    }
+  });
 }
 
 
@@ -399,42 +407,6 @@ if (toggleBtn && menuNav) {
       }
     });
   });
+
 }
- // =============================
- // Filtro de mes por año
- // =============================
 
- function filtrarTransaccionesPorFecha() {
-  const anio = parseInt(document.getElementById("anio").value);
-  const mes = parseInt(document.getElementById("mes").value);
-
-  const cuerpoTabla = document.getElementById("tablaExtracto");
-  cuerpoTabla.innerHTML = "";
-
-  if (!usuarioActual.transacciones || usuarioActual.transacciones.length === 0) {
-    cuerpoTabla.innerHTML = `<tr><td colspan="5">No hay transacciones registradas.</td></tr>`;
-    return;
-  }
-
-  const transaccionesFiltradas = usuarioActual.transacciones.filter(tx => {
-    const fecha = new Date(tx.fecha);
-    return fecha.getFullYear() === anio && fecha.getMonth() + 1 === mes;
-  });
-
-  if (transaccionesFiltradas.length === 0) {
-    cuerpoTabla.innerHTML = `<tr><td colspan="5">No se encontraron transacciones en ${mes}/${anio}.</td></tr>`;
-    return;
-  }
-
-  transaccionesFiltradas.forEach(tx => {
-    const fila = document.createElement("tr");
-    fila.innerHTML = `
-      <td>${tx.fecha}</td>
-      <td>${tx.referencia}</td>
-      <td>${tx.tipo}</td>
-      <td>${tx.descripcion}</td>
-      <td>$${Number(tx.valor).toLocaleString()}</td>
-    `;
-    cuerpoTabla.appendChild(fila);
-  });
-}

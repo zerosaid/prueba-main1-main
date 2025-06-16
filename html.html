@@ -35,8 +35,7 @@
     <section id="menu">
       <button onclick="mostrarOpcion('consignacion')">Consignación electrónica</button>
       <button onclick="mostrarOpcion('retiro')">Retiro</button>
-      <button onclick="mostrarOpcion('deposito')">Depósito</button>
-      <button onclick="mostrarOpcion('reporte')">Ver reporte</button>
+      <button onclick="mostrarOpcion('extracto')">Ver extracto</button>
       <button onclick="mostrarOpcion('resumen')">Resumen de transacciones</button>
       <button onclick="mostrarOpcion('servicios')">Pago de servicios públicos</button>
       <button onclick="mostrarOpcion('certificado')">Certificado bancario</button>
@@ -88,15 +87,15 @@
 
     <section id="seccionReporte" class="contenido oculto">
       <h2>Extracto Bancario</h2>
+    
       <p><strong>Nombre:</strong> <span id="reporteNombre"></span></p>
       <p><strong>Cuenta:</strong> <span id="reporteCuenta"></span></p>
-      <label for="anio">Año:</label>
-      <input type="number" id="anio" min="2000" max="2099" value="2025" />
-      <label for="mes">Mes:</label>
-      <input type="number" id="mes" min="1" max="12" value="6" />
-      <button onclick="filtrarTransaccionesPorFecha()">Generar Extracto</button>
     
-      <table border="1" style="margin-top: 1rem;">
+      <input type="number" id="anio" placeholder="Año (YYYY)" />
+      <input type="number" id="mes" placeholder="Mes (MM)" />
+      <button onclick="filtrarTransaccionesPorFecha()">Filtrar</button>
+    
+      <table>
         <thead>
           <tr>
             <th>Fecha</th>
@@ -106,12 +105,12 @@
             <th>Valor</th>
           </tr>
         </thead>
-        <tbody id="tablaExtracto"></tbody>
+        <tbody id="tablaExtracto">
+          <!-- Aquí se insertan las filas de transacciones -->
+        </tbody>
       </table>
     </section>
     
-
-
     <section id="servicios" class="contenido oculto">
       <h2>Pago de Servicios Públicos</h2>
       <label for="servicio">Tipo de servicio:</label>
